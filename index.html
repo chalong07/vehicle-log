@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>บันทึกการใช้รถ</title>
+<style>
+  :root { --bg:#f4f6f8; --card:#fff; --ink:#1c2733; --mute:#6b7785; --line:#d8dee5; --brand:#06a35a; --err:#c62828; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#12171c; --card:#1c242c; --ink:#e8edf2; --mute:#93a0ad; --line:#33404c; } }
+  * { box-sizing: border-box; }
+  body { margin:0; font-family:-apple-system,"Noto Sans Thai","Sarabun",sans-serif; background:var(--bg); color:var(--ink); }
+  header { padding:14px 16px 0; }
+  h1 { font-size:18px; margin:0 0 2px; }
+  .sub { font-size:13px; color:var(--mute); }
+  nav { display:flex; gap:6px; padding:12px 16px 0; overflow-x:auto; }
+  nav button { flex:1; min-width:78px; padding:10px 6px; border:1px solid var(--line); background:var(--card); color:var(--ink); border-radius:10px; font-size:14px; }
+  nav button.on { background:var(--brand); border-color:var(--brand); color:#fff; font-weight:600; }
+  main { padding:12px 16px 32px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:16px; }
+  label { display:block; font-size:13px; color:var(--mute); margin:12px 0 4px; }
+  label:first-child { margin-top:0; }
+  input, select { width:100%; padding:12px; font-size:16px; border:1px solid var(--line); border-radius:10px; background:var(--bg); color:var(--ink); }
+  .go { width:100%; margin-top:18px; padding:14px; font-size:16px; font-weight:600; border:0; border-radius:12px; background:var(--brand); color:#fff; }
+  .go:disabled { opacity:.5; }
+  .note { padding:10px 12px; border-radius:10px; background:var(--bg); border:1px solid var(--line); font-size:14px; margin-bottom:14px; }
+  .msg { margin-top:14px; font-size:15px; }
+  .ok { color:var(--brand); } .bad { color:var(--err); }
+</style>
+</head>
+<body>
+<header><h1>🚗 บันทึกการใช้รถ</h1><div class="sub" id="who">กำลังโหลด...</div></header>
+<nav id="tabs" hidden></nav>
+<main><div class="card" id="view">กำลังเชื่อมต่อ LINE...</div></main>
+<datalist id="places"></datalist>
+
+<script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+<script>
+/* ===== ตั้งค่า 2 ค่านี้ ===== */
+const CFG = {
+  LIFF_ID: 'ใส่ LIFF ID',
+  API_URL: 'ใส่ Web app URL ของ Apps Script'
+};
+
+const TABS = { start:'ออกรถ', end:'ถึงที่หมาย', fuel:'น้ำมัน', exp:'ค่าใช้จ่าย' };
+const PAY = ['เงินสด','คูปอง','บัตรเครดิตบริษัท'];
+const FORMS = {
+  start: { action:'start', fields:[
+    {id:'car', label:'รถ', type:'cars'},
+    {id:'startKm', label:'เลขไมล์ตอนออกรถ (กม.)', type:'num'},
+    {id:'from', label:'จุดออกรถ', type:'place'},
+    {id:'purpose', label:'ไปรับใคร / ไปทำอะไร', type:'text'}]},
+  end: { action:'end', fields:[
+    {id:'endKm', label:'เลขไมล์ตอนถึง (กม.)', type:'num'},
+    {id:'to', label:'จุดที่มาถึง', type:'place'}]},
+  fuel: { action:'fuel', fields:[
+    {id:'car', label:'รถ', type:'cars'},
+    {id:'type', label:'ชนิดน้ำมัน', type:'fuelTypes'},
+    {id:'liters', label:'จำนวนลิตร', type:'num'},
+    {id:'baht', label:'จำนวนเงิน (บาท)', type:'num'},
+    {id:'station', label:'เติมที่ไหน (ปั๊ม/สาขา)', type:'place'},
+    {id:'km', label:'เลขไมล์ตอนเติม (กม.)', type:'num'},
+    {id:'pay', label:'ชำระด้วย', type:'pay'}]},
+  exp: { action:'expense', fields:[
+    {id:'car', label:'รถ', type:'cars'},
+    {id:'kind', label:'ประเภท', type:'kind'},
+    {id:'baht', label:'จำนวนเงิน (บาท)', type:'num'},
+    {id:'place', label:'ด่าน / ร้าน / สถานที่', type:'place'}]}
+};
+
+let S = null, mode = 'start';
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+async function api(action, data) {
+  const r = await fetch(CFG.API_URL, { method:'POST', body: JSON.stringify({ idToken: liff.getIDToken(), action, data }) });
+  const j = await r.json();
+  if (!j.ok) throw new Error(j.error);
+  return j;
+}
+
+async function main() {
+  try {
+    await liff.init({ liffId: CFG.LIFF_ID });
+    if (!liff.isLoggedIn()) { liff.login(); return; }
+    const m = new URLSearchParams(location.search).get('mode');
+    if (TABS[m]) mode = m;
+    await load();
+  } catch (e) { fail(e); }
+}
+
+async function load() {
+  S = await api('init', {});
+  render();
+}
+
+function render() {
+  if (S.state === 'new') {
+    $('who').textContent = 'ลงทะเบียนครั้งแรก';
+    $('view').innerHTML = `<label>ชื่อ-นามสกุลพนักงานขับรถ</label><input id="name" autocomplete="name">
+      <button class="go" id="reg">ลงทะเบียน</button><div class="msg" id="msg"></div>`;
+    $('reg').onclick = () => submitBtn($('reg'), () => api('register', {name: $('name').value}).then(r => { S = r; render(); }));
+    return;
+  }
+  if (S.state === 'pending') {
+    $('who').textContent = S.name || '';
+    $('view').innerHTML = '<div class="note">ลงทะเบียนแล้ว รอผู้ดูแลอนุมัติ แล้วเปิดใหม่อีกครั้ง</div>';
+    return;
+  }
+  $('who').textContent = 'คนขับ: ' + S.name;
+  $('places').innerHTML = S.places.map(p => `<option value="${esc(p)}">`).join('');
+  $('tabs').hidden = false;
+  $('tabs').innerHTML = Object.keys(TABS).map(k => `<button data-k="${k}" class="${k === mode ? 'on' : ''}">${TABS[k]}</button>`).join('');
+  $('tabs').querySelectorAll('button').forEach(b => b.onclick = () => { mode = b.dataset.k; render(); });
+  renderForm();
+}
+
+function field(f) {
+  const id = 'f_' + f.id;
+  const opt = a => a.map(x => `<option>${esc(x)}</option>`).join('');
+  let el;
+  if (f.type === 'cars')           el = `<select id="${id}">${opt(S.cars)}</select>`;
+  else if (f.type === 'fuelTypes') el = `<select id="${id}">${opt(S.fuelTypes)}</select>`;
+  else if (f.type === 'pay')       el = `<select id="${id}">${opt(PAY)}</select>`;
+  else if (f.type === 'kind')      el = `<select id="${id}">${opt(['ทางด่วน','อาหาร'])}</select>`;
+  else if (f.type === 'num')       el = `<input id="${id}" type="text" inputmode="decimal">`;
+  else if (f.type === 'place')     el = `<input id="${id}" list="places" autocomplete="off">`;
+  else                             el = `<input id="${id}" autocomplete="off">`;
+  return `<label for="${id}">${f.label}</label>${el}`;
+}
+
+function renderForm() {
+  const form = FORMS[mode];
+  let top = '';
+  if (mode === 'end') {
+    if (!S.openTrip) { $('view').innerHTML = '<div class="note">ยังไม่มีทริปที่เปิดอยู่ กด "ออกรถ" ก่อน</div>'; return; }
+    const t = S.openTrip;
+    top = `<div class="note">ทริปที่เปิดอยู่: ${esc(t.car)} ออก ${esc(t.time)} จาก ${esc(t.from)}<br>ไมล์ออก ${esc(t.startKm)} · ${esc(t.purpose)}</div>`;
+  }
+  if (mode === 'start' && S.openTrip) {
+    $('view').innerHTML = '<div class="note">มีทริปที่ยังไม่จบ กรุณากด "ถึงที่หมาย" ก่อน</div>';
+    return;
+  }
+  $('view').innerHTML = top + form.fields.map(field).join('') + '<button class="go" id="send">บันทึก</button><div class="msg" id="msg"></div>';
+
+  // เติมไมล์ล่าสุดของรถให้อัตโนมัติ (คนขับแค่ยืนยันหรือแก้)
+  const car = $('f_car'), km = $('f_startKm') || $('f_km');
+  if (car && km) {
+    const fill = () => { const v = S.lastKm[car.value]; km.value = v !== undefined ? v : ''; };
+    car.onchange = fill; fill();
+  }
+  $('send').onclick = () => submitBtn($('send'), async () => {
+    const data = {};
+    form.fields.forEach(f => data[f.id] = $('f_' + f.id).value);
+    const r = await api(form.action, data);
+    await load();
+    $('view').insertAdjacentHTML('afterbegin', `<div class="note ok">✅ ${esc(r.msg)}</div>`);
+  });
+}
+
+async function submitBtn(btn, fn) {
+  btn.disabled = true;
+  const m = $('msg'); if (m) m.textContent = 'กำลังบันทึก...';
+  try { await fn(); }
+  catch (e) { btn.disabled = false; const m2 = $('msg'); if (m2) m2.innerHTML = `<span class="bad">❌ ${esc(e.message)}</span>`; }
+}
+
+function fail(e) { $('view').innerHTML = `<span class="bad">เปิดไม่สำเร็จ: ${esc(e.message || e)}</span>`; $('who').textContent = ''; }
+
+main();
+</script>
+</body>
+</html>
