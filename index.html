@@ -32,6 +32,10 @@ details>div{padding-bottom:16px}
 .bar{position:fixed;left:0;right:0;bottom:0;padding:12px 16px calc(12px + env(safe-area-inset-bottom));background:var(--card);border-top:1px solid var(--line)}
 .bar button{width:100%;font:inherit;font-weight:700;font-size:17px;border:0;border-radius:12px;padding:14px;background:var(--accent);color:var(--accent-ink);cursor:pointer}
 .bar button:disabled{opacity:.5}
+.photo{display:flex;align-items:center;gap:10px;margin-top:12px}
+.photo label{margin:0;border:1px dashed var(--accent);color:var(--accent);border-radius:10px;padding:10px 14px;font-weight:600;cursor:pointer}
+.photo input{display:none}
+.photo span{font-size:13px;color:var(--mute)}
 .err{color:var(--warn);font-size:14px;margin:0 16px;min-height:1px}
 #done{display:none;text-align:center;padding:60px 24px}
 #done h2{font-size:24px;margin:8px 0}
@@ -61,6 +65,7 @@ details>div{padding-bottom:16px}
     <div><label for="me">ไมล์จบ</label><input id="me" type="number" inputmode="numeric" placeholder="กรอกตอนถึง"></div>
   </div>
   <div class="hint">ไมล์เริ่มดึงจากทริปก่อนหน้าให้อัตโนมัติ · ระยะทาง <span class="dist" id="dist">–</span> กม.</div>
+  <div class="photo"><label for="photoMile">📷 ถ่ายรูปไมล์</label><input id="photoMile" type="file" accept="image/*" capture="environment"><span id="pmTxt">ไม่บังคับ</span></div>
 </section>
 
 <section>
@@ -81,6 +86,7 @@ details>div{padding-bottom:16px}
     </div>
     <label for="fuelPay">จ่ายด้วย</label>
     <select id="fuelPay"><option value="">–</option><option>เงินสด</option><option>คูปอง</option><option>บัตรเครดิตบริษัท</option></select>
+    <div class="photo"><label for="photoReceipt">📷 ถ่ายรูปใบเสร็จ</label><input id="photoReceipt" type="file" accept="image/*" capture="environment"><span id="prTxt">ไม่บังคับ</span></div>
   </div>
 </details>
 
@@ -112,6 +118,30 @@ const GAS_URL = 'https://script.google.com/macros/s/AKfycbxGU36MkEnMDwhvbaEYl9rz
 const $ = id => document.getElementById(id);
 let cfg = {vehicles:[], staff:[], places:[]}, user = {name:'', id:''};
 const picked = new Set();
+const photos = {photoMile:'', photoReceipt:''};
+
+// ย่อรูปก่อนส่ง (ด้านยาวสุด 1024px, JPEG) ให้เร็วและไม่กินเน็ต
+function shrink(file){
+  return new Promise((ok, no) => {
+    const img = new Image(), url = URL.createObjectURL(file);
+    img.onload = () => {
+      const k = Math.min(1, 1024 / Math.max(img.width, img.height));
+      const c = document.createElement('canvas'); c.width = img.width * k; c.height = img.height * k;
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+      URL.revokeObjectURL(url); ok(c.toDataURL('image/jpeg', 0.7));
+    };
+    img.onerror = () => no(new Error('อ่านรูปไม่ได้'));
+    img.src = url;
+  });
+}
+[['photoMile','pmTxt'],['photoReceipt','prTxt']].forEach(([id, txt]) => {
+  $(id).onchange = async e => {
+    const f = e.target.files[0]; if (!f) return;
+    $(txt).textContent = 'กำลังย่อรูป…';
+    try { photos[id] = await shrink(f); $(txt).textContent = '✓ แนบรูปแล้ว'; }
+    catch(x) { photos[id] = ''; $(txt).textContent = 'แนบรูปไม่สำเร็จ ลองใหม่'; }
+  };
+});
 
 function chips(el, items, onTap, multi){
   el.innerHTML = '';
@@ -179,7 +209,8 @@ $('save').onclick = async () => {
     from:$('from').value.trim(), to:$('to').value.trim(), mileStart:ms, mileEnd:me,
     passengers:[...picked], note:$('note').value.trim(),
     fuelType:$('fuelType').value, fuelLiters:$('fuelLiters').value, fuelPrice:$('fuelPrice').value, fuelPay:$('fuelPay').value,
-    food:$('food').value, toll:$('toll').value, tag:$('tag').value
+    food:$('food').value, toll:$('toll').value, tag:$('tag').value,
+    photoMile:photos.photoMile, photoReceipt:photos.photoReceipt
   };
   try {
     const r = await (await fetch(GAS_URL, {method:'POST', headers:{'Content-Type':'text/plain'}, body:JSON.stringify(body)})).json();
