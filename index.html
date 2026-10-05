@@ -43,6 +43,7 @@ details>div{padding-bottom:16px}
 <header><h1>บันทึกการใช้รถ</h1><p id="who">กำลังโหลด…</p></header>
 
 <section>
+  <div id="nameBox" style="display:none"><label for="manualName">ชื่อคนขับ</label><input id="manualName" placeholder="พิมพ์ชื่อ"></div>
   <label for="vehicle">รถ</label>
   <select id="vehicle"></select>
 
@@ -104,8 +105,8 @@ details>div{padding-bottom:16px}
 
 <script>
 // ===== ตั้งค่า 2 ค่านี้ก่อนใช้งาน =====
-  LIFF_ID: '2011880829-ji89EJXX',
-  API_URL: 'https://script.google.com/macros/s/AKfycbxGU36MkEnMDwhvbaEYl9rzTKWBWZpd5SxmdTZlmUGut1RZ5NO6gNe5gfZFLBK0g6KAdw/exec'
+const LIFF_ID = 'ใส่-LIFF-ID';
+const GAS_URL = 'ใส่-URL-ของ-Apps-Script-Web-App';
 // =====================================
 
 const $ = id => document.getElementById(id);
@@ -136,13 +137,11 @@ function calc(){
 }
 
 async function init(){
+  // 1) โหลดรายการจากชีตก่อน ไม่ขึ้นกับ LIFF
   try {
-    await liff.init({liffId: LIFF_ID});
-    if (!liff.isLoggedIn()) { liff.login(); return; }
-    const p = await liff.getProfile(); user = {name: p.displayName, id: p.userId};
-  } catch(e) { user = {name: prompt('ชื่อคนขับ (โหมดทดสอบ)') || 'ทดสอบ', id: ''}; }
-  $('who').textContent = 'คนขับ: ' + user.name;
-  try { cfg = await (await fetch(GAS_URL)).json(); } catch(e) { $('err').textContent = 'โหลดรายการไม่สำเร็จ ลองเปิดใหม่'; return; }
+    const res = await fetch(GAS_URL);
+    cfg = await res.json();
+  } catch(e) { $('who').textContent = 'โหลดรายการจากชีตไม่สำเร็จ'; $('err').textContent = 'เช็ค GAS_URL และการ Deploy (Access: Anyone) · ' + e.message; return; }
 
   $('vehicle').innerHTML = cfg.vehicles.map(v => `<option value="${v.id}">${v.id} ${v.name||''}</option>`).join('');
   const last = localStorage.getItem('lastVehicle');
@@ -150,6 +149,19 @@ async function init(){
   chips($('placeChips'), cfg.places, t => $('to').value = t, false);
   chips($('staffChips'), cfg.staff, (t,b) => b.getAttribute('aria-pressed')==='true' ? picked.add(t) : picked.delete(t), true);
   applyVehicle();
+  $('who').textContent = 'กำลังเชื่อมต่อ LINE…';
+
+  // 2) ค่อยเชื่อม LINE ถ้าไม่สำเร็จให้กรอกชื่อเอง
+  try {
+    await Promise.race([liff.init({liffId: LIFF_ID}), new Promise((_,rj)=>setTimeout(()=>rj(new Error('LIFF หมดเวลา')),8000))]);
+    if (!liff.isLoggedIn()) { liff.login(); return; }
+    const p = await liff.getProfile(); user = {name: p.displayName, id: p.userId};
+    $('who').textContent = 'คนขับ: ' + user.name;
+  } catch(e) {
+    $('who').textContent = 'เชื่อม LINE ไม่ได้ กรอกชื่อคนขับด้านล่าง';
+    $('err').textContent = 'LIFF: ' + (e.message || e);
+    $('nameBox').style.display = 'block';
+  }
   $('save').disabled = false;
 }
 
@@ -158,11 +170,12 @@ $('ms').oninput = $('me').oninput = calc;
 
 $('save').onclick = async () => {
   const ms = Number($('ms').value), me = Number($('me').value);
+  if (!(user.name || $('manualName').value.trim())) return $('err').textContent = 'กรอกชื่อคนขับ';
   if (!$('to').value.trim()) return $('err').textContent = 'กรอกสถานที่ที่ไป';
   if (!$('me').value || me < ms) return $('err').textContent = 'ไมล์จบต้องมากกว่าหรือเท่ากับไมล์เริ่ม';
   $('err').textContent = ''; $('save').disabled = true; $('save').textContent = 'กำลังบันทึก…';
   const body = {
-    driver:user.name, userId:user.id, vehicle:$('vehicle').value,
+    driver:user.name || $('manualName').value.trim(), userId:user.id, vehicle:$('vehicle').value,
     from:$('from').value.trim(), to:$('to').value.trim(), mileStart:ms, mileEnd:me,
     passengers:[...picked], note:$('note').value.trim(),
     fuelType:$('fuelType').value, fuelLiters:$('fuelLiters').value, fuelPrice:$('fuelPrice').value, fuelPay:$('fuelPay').value,
