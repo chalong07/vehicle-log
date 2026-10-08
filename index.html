@@ -168,7 +168,9 @@ function renderForm() {
     form.fields.forEach(f => data[f.id] = $('f_' + f.id).value);
     const r = await api(form.action, data);
     reqId = newId();                       // สำเร็จแล้ว รอบหน้าใช้รหัสใหม่
-    S = r; render();                       // เซิร์ฟเวอร์ส่งสถานะล่าสุดมาแล้ว ไม่ต้องโหลดซ้ำ
+    if (r.state === 'ok' && Array.isArray(r.cars)) S = r;          // เซิร์ฟเวอร์ส่งสถานะล่าสุดมาแล้ว ไม่ต้องโหลดซ้ำ
+    else { try { S = await api('init', {}); } catch (e) { /* บันทึกสำเร็จแล้ว โหลดใหม่ไม่ได้ก็ใช้สถานะเดิม */ } }
+    render();
     $('view').insertAdjacentHTML('afterbegin', `<div class="note ok">✅ ${esc(r.msg)}</div>`);
   });
 }
