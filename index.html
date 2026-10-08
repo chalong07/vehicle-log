@@ -76,11 +76,19 @@ const $ = id => document.getElementById(id);
 const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
 async function api(action, data) {
-  const r = await fetch(CFG.API_URL, { method:'POST', body: JSON.stringify({ idToken: liff.getIDToken(), action, data }) });
-  const j = await r.json();
-  if (!j.ok) throw new Error(j.error);
-  return j;
+  const ctl = new AbortController(), timer = setTimeout(() => ctl.abort(), 60000);
+  try {
+    const r = await fetch(CFG.API_URL, { method:'POST', body: JSON.stringify({ idToken: liff.getIDToken(), action, data }), signal: ctl.signal });
+    const j = await r.json();
+    if (!j.ok) throw new Error(j.error);
+    return j;
+  } catch (e) {
+    if (e.name === 'AbortError' || e instanceof TypeError) { const n = new Error('ติดต่อระบบไม่ได้/ช้าเกินไป — กดบันทึกอีกครั้งได้เลย ระบบกันบันทึกซ้ำให้'); n.net = true; throw n; }
+    throw e;
+  } finally { clearTimeout(timer); }
 }
+const newId = () => (self.crypto && crypto.randomUUID ? crypto.randomUUID().replace(/-/g, '') : Array.from({length: 24}, () => Math.floor(Math.random() * 36).toString(36)).join('')).slice(0, 20);
+let reqId = newId();   // รหัสของการกดบันทึกครั้งนี้ — ส่งซ้ำด้วยรหัสเดิมถ้าลองใหม่ ฝั่งเซิร์ฟเวอร์จะไม่เขียนซ้ำ
 
 async function main() {
   try {
@@ -156,19 +164,23 @@ function renderForm() {
     car.onchange = fill; fill();
   }
   $('send').onclick = () => submitBtn($('send'), async () => {
-    const data = {};
+    const data = { reqId };
     form.fields.forEach(f => data[f.id] = $('f_' + f.id).value);
     const r = await api(form.action, data);
-    await load();
+    reqId = newId();                       // สำเร็จแล้ว รอบหน้าใช้รหัสใหม่
+    S = r; render();                       // เซิร์ฟเวอร์ส่งสถานะล่าสุดมาแล้ว ไม่ต้องโหลดซ้ำ
     $('view').insertAdjacentHTML('afterbegin', `<div class="note ok">✅ ${esc(r.msg)}</div>`);
   });
 }
 
+let busy = false;
 async function submitBtn(btn, fn) {
-  btn.disabled = true;
+  if (busy) return;
+  busy = true; btn.disabled = true;
   const m = $('msg'); if (m) m.textContent = 'กำลังบันทึก...';
   try { await fn(); }
   catch (e) { btn.disabled = false; const m2 = $('msg'); if (m2) m2.innerHTML = `<span class="bad">❌ ${esc(e.message)}</span>`; }
+  finally { busy = false; }
 }
 
 function fail(e) { $('view').innerHTML = `<span class="bad">เปิดไม่สำเร็จ: ${esc(e.message || e)}</span>`; $('who').textContent = ''; }
