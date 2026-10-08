@@ -2,78 +2,65 @@
 <html lang="th">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>บันทึกการใช้รถ</title>
 <style>
-  :root { --bg:#f4f6f8; --card:#fff; --ink:#1c2733; --mute:#6b7785; --line:#d8dee5; --brand:#06a35a; --err:#c62828; }
-  @media (prefers-color-scheme: dark) { :root { --bg:#12171c; --card:#1c242c; --ink:#e8edf2; --mute:#93a0ad; --line:#33404c; } }
-  * { box-sizing: border-box; }
-  body { margin:0; font-family:-apple-system,"Noto Sans Thai","Sarabun",sans-serif; background:var(--bg); color:var(--ink); }
-  header { padding:14px 16px 0; }
-  h1 { font-size:18px; margin:0 0 2px; }
-  .sub { font-size:13px; color:var(--mute); }
-  nav { display:flex; gap:6px; padding:12px 16px 0; overflow-x:auto; }
-  nav button { flex:1; min-width:78px; padding:10px 6px; border:1px solid var(--line); background:var(--card); color:var(--ink); border-radius:10px; font-size:14px; }
-  nav button.on { background:var(--brand); border-color:var(--brand); color:#fff; font-weight:600; }
-  main { padding:12px 16px 32px; }
+  :root { --bg:#eceff1; --card:#fff; --ink:#1b2328; --mute:#66727c; --line:#d5dbe0; --asphalt:#1d2328; --amber:#f2b705; --ok:#1f9d55; --err:#c62828; --chip:#e4e8eb; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#121619; --card:#1d2428; --ink:#eef1f3; --mute:#97a3ad; --line:#323c43; --asphalt:#0b0e10; --chip:#2a343a; } }
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  body { margin:0; font:16px/1.45 -apple-system,"Noto Sans Thai","Sarabun",sans-serif; background:var(--bg); color:var(--ink); }
+  header { background:var(--asphalt); color:#fff; padding:calc(14px + env(safe-area-inset-top)) 18px 16px; border-bottom:4px solid var(--amber); }
+  h1 { font-size:19px; margin:0; } .sub { font-size:13px; opacity:.7; }
+  main { padding:14px 14px calc(96px + env(safe-area-inset-bottom)); max-width:560px; margin:0 auto; }
+  button { font:inherit; color:inherit; cursor:pointer; }
+  .trip { background:var(--asphalt); color:#fff; border-radius:16px; padding:18px; }
+  .trip .lbl { font-size:14px; opacity:.75; } .trip .meta { font-size:14px; opacity:.8; margin-top:4px; }
+  .odo { display:flex; gap:3px; margin:10px 0 6px; } 
+  .odo span { background:#000; color:#f4f4f0; font:700 30px/1 ui-monospace,Menlo,monospace; width:30px; padding:9px 0; text-align:center; border-radius:5px; border:1px solid #333; }
+  .go { width:100%; min-height:54px; margin-top:14px; border:0; border-radius:12px; background:var(--amber); color:#1b1500; font-size:18px; font-weight:700; }
+  .go:disabled { opacity:.45; }
+  .tiles { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:12px; }
+  .tiles button { background:var(--card); border:1px solid var(--line); border-radius:14px; min-height:92px; font-size:26px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; }
+  .tiles b { font-size:15px; font-weight:600; }
   .card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:16px; }
-  label { display:block; font-size:13px; color:var(--mute); margin:12px 0 4px; }
-  label:first-child { margin-top:0; }
-  input, select { width:100%; padding:12px; font-size:16px; border:1px solid var(--line); border-radius:10px; background:var(--bg); color:var(--ink); }
-  .go { width:100%; margin-top:18px; padding:14px; font-size:16px; font-weight:600; border:0; border-radius:12px; background:var(--brand); color:#fff; }
-  .go:disabled { opacity:.5; }
-  .note { padding:10px 12px; border-radius:10px; background:var(--bg); border:1px solid var(--line); font-size:14px; margin-bottom:14px; }
-  .msg { margin-top:14px; font-size:15px; }
-  .ok { color:var(--brand); } .bad { color:var(--err); }
+  .card h2 { font-size:17px; margin:0 0 4px; }
+  label { display:block; font-size:14px; color:var(--mute); margin:16px 0 6px; }
+  input:not([type=hidden]), select { width:100%; min-height:50px; padding:10px 12px; font:inherit; font-size:17px; border:1px solid var(--line); border-radius:10px; background:var(--bg); color:var(--ink); }
+  input:focus, select:focus { outline:2px solid var(--amber); outline-offset:1px; }
+  .chips { display:flex; flex-wrap:wrap; gap:8px; margin-top:8px; }
+  .chip { min-height:44px; padding:8px 14px; border:1px solid var(--line); border-radius:22px; background:var(--chip); font-size:15px; }
+  .chip.on { background:var(--asphalt); border-color:var(--asphalt); color:#fff; font-weight:600; }
+  .hint { min-height:22px; margin-top:12px; font-size:15px; color:var(--mute); } .hint.warn { color:#a86b00; } .hint.bad { color:var(--err); font-weight:600; }
+  .savebar { position:sticky; bottom:calc(72px + env(safe-area-inset-bottom)); padding-top:8px; }
+  .note { padding:12px 14px; border-radius:12px; background:var(--card); border:1px solid var(--line); margin-bottom:12px; font-size:15px; display:flex; gap:10px; align-items:center; justify-content:space-between; }
+  .note.ok { border-left:5px solid var(--ok); } .note button { border:1px solid var(--line); background:var(--chip); border-radius:8px; padding:8px 12px; white-space:nowrap; }
+  .msg { margin-top:12px; font-size:15px; } .bad { color:var(--err); }
+  nav { position:fixed; left:0; right:0; bottom:0; display:flex; background:var(--card); border-top:1px solid var(--line); padding-bottom:env(safe-area-inset-bottom); }
+  nav button { flex:1; min-height:62px; border:0; background:none; font-size:12px; color:var(--mute); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; }
+  nav button span { font-size:22px; } nav button.on { color:var(--ink); font-weight:700; box-shadow:inset 0 3px 0 var(--amber); }
 </style>
 </head>
 <body>
 <header><h1>🚗 บันทึกการใช้รถ</h1><div class="sub" id="who">กำลังโหลด...</div></header>
-<nav id="tabs" hidden></nav>
-<main><div class="card" id="view">กำลังเชื่อมต่อ LINE...</div></main>
-<datalist id="places"></datalist>
+<main id="view"><div class="card">กำลังเชื่อมต่อ LINE...</div></main>
+<nav id="nav" hidden></nav>
 
 <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 <script>
-/* ===== ตั้งค่า 2 ค่านี้ ===== */
 const CFG = {
   LIFF_ID: '2011880829-ji89EJXX',
   API_URL: 'https://script.google.com/macros/s/AKfycbwQv8sfo33YKbx5TJf_mEvHI3A3STcN0c43bOLWJxu91gP4_yWRckuhqRmsnlW8I22EhQ/exec'
 };
-
-const TABS = { start:'ออกรถ', end:'ถึงที่หมาย', fuel:'น้ำมัน', exp:'ค่าใช้จ่าย' };
 const PAY = ['เงินสด','คูปอง','บัตรเครดิตบริษัท'];
-const FORMS = {
-  start: { action:'start', fields:[
-    {id:'car', label:'รถ', type:'cars'},
-    {id:'startKm', label:'เลขไมล์ตอนออกรถ (กม.)', type:'num'},
-    {id:'from', label:'จุดออกรถ', type:'place'},
-    {id:'user', label:'ผู้ใช้รถ (ชื่อผู้โดยสาร/ผู้ขอใช้รถ)', type:'text'},
-    {id:'purpose', label:'วัตถุประสงค์', type:'purposes'},
-    {id:'dept', label:'แผนกที่ขอใช้', type:'depts'},
-    {id:'detail', label:'ไปรับใคร / ไปทำอะไร (รายละเอียด)', type:'text'}]},
-  end: { action:'end', fields:[
-    {id:'endKm', label:'เลขไมล์ตอนถึง (กม.)', type:'num'},
-    {id:'to', label:'จุดที่มาถึง', type:'place'},
-    {id:'remark', label:'หมายเหตุ (ถ้ามี)', type:'text'}]},
-  fuel: { action:'fuel', fields:[
-    {id:'car', label:'รถ', type:'cars'},
-    {id:'type', label:'ชนิดน้ำมัน', type:'fuelTypes'},
-    {id:'liters', label:'จำนวนลิตร', type:'num'},
-    {id:'baht', label:'จำนวนเงิน (บาท)', type:'num'},
-    {id:'station', label:'เติมที่ไหน (ปั๊ม/สาขา)', type:'place'},
-    {id:'km', label:'เลขไมล์ตอนเติม (กม.)', type:'num'},
-    {id:'pay', label:'ชำระด้วย', type:'pay'}]},
-  exp: { action:'expense', fields:[
-    {id:'car', label:'รถ', type:'cars'},
-    {id:'kind', label:'ประเภท', type:'kind'},
-    {id:'baht', label:'จำนวนเงิน (บาท)', type:'num'},
-    {id:'place', label:'ด่าน / ร้าน / สถานที่', type:'place'}]}
-};
+const TITLE = { start:'ออกรถ', end:'ถึงที่หมาย', fuel:'เติมน้ำมัน', exp:'ค่าใช้จ่าย' };
+const NAV = [['home','🏠','หน้าหลัก'], ['trip','🚗','ทริป'], ['fuel','⛽','น้ำมัน'], ['exp','🧾','ค่าใช้จ่าย']];
+const ACTION = { start:'start', end:'end', fuel:'fuel', exp:'expense' };
 
-let S = null, mode = 'start';
+let S = null, view = 'home', busy = false, toast = null, undoInfo = null;
 const $ = id => document.getElementById(id);
-const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const newId = () => (self.crypto && crypto.randomUUID ? crypto.randomUUID().replace(/-/g, '') : Array.from({length: 24}, () => Math.floor(Math.random() * 36).toString(36)).join('')).slice(0, 20);
+let reqId = newId();   // รหัสของการกดบันทึกครั้งนี้ — ลองใหม่ด้วยรหัสเดิม เซิร์ฟเวอร์จะไม่เขียนซ้ำ
 
 async function api(action, data) {
   const ctl = new AbortController(), timer = setTimeout(() => ctl.abort(), 60000);
@@ -83,99 +70,185 @@ async function api(action, data) {
     if (!j.ok) throw new Error(j.error);
     return j;
   } catch (e) {
-    if (e.name === 'AbortError' || e instanceof TypeError) { const n = new Error('ติดต่อระบบไม่ได้/ช้าเกินไป — กดบันทึกอีกครั้งได้เลย ระบบกันบันทึกซ้ำให้'); n.net = true; throw n; }
+    if (e.name === 'AbortError' || e instanceof TypeError) throw new Error('ติดต่อระบบไม่ได้/ช้าเกินไป — กดบันทึกอีกครั้งได้เลย ระบบกันบันทึกซ้ำให้');
     throw e;
   } finally { clearTimeout(timer); }
 }
-const newId = () => (self.crypto && crypto.randomUUID ? crypto.randomUUID().replace(/-/g, '') : Array.from({length: 24}, () => Math.floor(Math.random() * 36).toString(36)).join('')).slice(0, 20);
-let reqId = newId();   // รหัสของการกดบันทึกครั้งนี้ — ส่งซ้ำด้วยรหัสเดิมถ้าลองใหม่ ฝั่งเซิร์ฟเวอร์จะไม่เขียนซ้ำ
 
 async function main() {
   try {
     await liff.init({ liffId: CFG.LIFF_ID });
     if (!liff.isLoggedIn()) { liff.login(); return; }
-    const m = new URLSearchParams(location.search).get('mode');
-    if (TABS[m]) mode = m;
-    await load();
-    if (!TABS[m] && S.openTrip) { mode = 'end'; render(); }
+    S = await api('init', {});
+    const m = new URLSearchParams(location.search).get('mode');   // เมนู LINE: ?mode=start|end|fuel|exp|trip
+    if (m === 'fuel' || m === 'exp') view = m;
+    else if (m === 'start' || m === 'end' || m === 'trip') view = S.openTrip ? 'end' : 'start';
+    else if (S.openTrip) view = 'home';
+    render();
   } catch (e) { fail(e); }
 }
 
-async function load() {
-  S = await api('init', {});
-  render();
+function go(v) {
+  if (v === 'trip') v = S.openTrip ? 'end' : 'start';
+  if (v === 'start' && S.openTrip) v = 'end';
+  if (v === 'end' && !S.openTrip) v = 'start';
+  view = v; toast = null; reqId = newId(); render(); scrollTo(0, 0);
 }
 
 function render() {
   if (S.state === 'new') {
     $('who').textContent = 'ลงทะเบียนครั้งแรก';
-    $('view').innerHTML = `<label>ชื่อ-นามสกุลพนักงานขับรถ</label><input id="name" autocomplete="name">
-      <button class="go" id="reg">ลงทะเบียน</button><div class="msg" id="msg"></div>`;
+    $('view').innerHTML = `<div class="card"><label>ชื่อ-นามสกุลพนักงานขับรถ</label><input id="name" autocomplete="name">
+      <button class="go" id="reg">ลงทะเบียน</button><div class="msg" id="msg"></div></div>`;
     $('reg').onclick = () => submitBtn($('reg'), () => api('register', {name: $('name').value}).then(r => { S = r; render(); }));
     return;
   }
   if (S.state === 'pending') {
     $('who').textContent = S.name || '';
-    $('view').innerHTML = '<div class="note">ลงทะเบียนแล้ว รอผู้ดูแลอนุมัติ แล้วเปิดใหม่อีกครั้ง</div>';
+    $('view').innerHTML = '<div class="card">ลงทะเบียนแล้ว รอผู้ดูแลอนุมัติ แล้วเปิดใหม่อีกครั้ง</div>';
     return;
   }
   $('who').textContent = 'คนขับ: ' + S.name;
-  $('places').innerHTML = S.places.map(p => `<option value="${esc(p)}">`).join('');
-  $('tabs').hidden = false;
-  $('tabs').innerHTML = Object.keys(TABS).map(k => `<button data-k="${k}" class="${k === mode ? 'on' : ''}">${TABS[k]}</button>`).join('');
-  $('tabs').querySelectorAll('button').forEach(b => b.onclick = () => { mode = b.dataset.k; render(); });
-  renderForm();
+  const cur = (view === 'start' || view === 'end') ? 'trip' : view;
+  $('nav').hidden = false;
+  $('nav').innerHTML = NAV.map(n => `<button data-nav="${n[0]}" class="${n[0] === cur ? 'on' : ''}"><span>${n[1]}</span>${n[2]}</button>`).join('');
+  view === 'home' ? renderHome() : renderForm();
+}
+
+const odo = n => String(Math.round(Number(n) || 0)).padStart(6, '0').split('').map(d => `<span>${d}</span>`).join('');
+function elapsed(t) {
+  const p = String(t).split(':').map(Number), n = new Date();
+  let d = n.getHours() * 60 + n.getMinutes() - (p[0] * 60 + p[1]); if (d < 0) d += 1440;
+  return d >= 60 ? Math.floor(d / 60) + ' ชม. ' + (d % 60) + ' น.' : d + ' นาที';
+}
+
+function renderHome() {
+  const t = S.openTrip;
+  let h = '';
+  if (toast) {
+    const can = undoInfo && Date.now() - undoInfo.at < 600000;
+    h += `<div class="note ok"><span>✅ ${esc(toast)}</span>${can ? '<button data-undo>ยกเลิกรายการนี้</button>' : ''}</div>`;
+  }
+  h += t
+    ? `<section class="trip"><div class="lbl">กำลังใช้รถ ${esc(t.car)}</div><div class="odo" aria-label="ไมล์ออก ${esc(t.startKm)}">${odo(t.startKm)}</div>
+       <div class="meta">ออก ${esc(t.time)} จาก ${esc(t.from)} · ผ่านไป ${elapsed(t.time)}</div>
+       <div class="meta">${esc(t.user)}${t.detail ? ' · ' + esc(t.detail) : ''}</div><button class="go" data-go="end">ถึงที่หมายแล้ว</button></section>`
+    : `<section class="trip"><div class="lbl">ยังไม่มีทริปที่เปิดอยู่</div><div class="meta">แตะเมื่อเริ่มใช้รถ</div><button class="go" data-go="start">ออกรถ</button></section>`;
+  h += `<div class="tiles"><button data-go="fuel">⛽<b>เติมน้ำมัน</b></button><button data-go="exp">🧾<b>ค่าใช้จ่าย</b></button></div><div class="msg" id="msg"></div>`;
+  $('view').innerHTML = h;
+}
+
+/* ===== ฟอร์ม: จำค่าที่ใช้ล่าสุด · ปุ่มเลือก · ตรวจทันที ===== */
+function fields() {
+  const L = S.last || {};
+  const F = {
+    start: [
+      {id:'car', label:'รถ', type:'choice', opts:S.cars, def:L.car},
+      {id:'startKm', label:'เลขไมล์ตอนออกรถ (กม.)', type:'num'},
+      {id:'from', label:'จุดออกรถ', type:'place', def:L.to},
+      {id:'user', label:'ผู้ใช้รถ (ผู้โดยสาร/ผู้ขอใช้รถ)', type:'text', def:L.user},
+      {id:'purpose', label:'วัตถุประสงค์', type:'choice', opts:S.purposes, def:L.purpose},
+      {id:'dept', label:'แผนกที่ขอใช้', type:'choice', opts:S.depts, def:L.dept},
+      {id:'detail', label:'ไปรับใคร / ไปทำอะไร', type:'text'}],
+    end: [
+      {id:'endKm', label:'เลขไมล์ตอนถึง (กม.)', type:'num'},
+      {id:'to', label:'จุดที่มาถึง', type:'place'},
+      {id:'remark', label:'หมายเหตุ (ถ้ามี)', type:'text'}],
+    fuel: [
+      {id:'car', label:'รถ', type:'choice', opts:S.cars, def:L.car},
+      {id:'type', label:'ชนิดน้ำมัน', type:'choice', opts:S.fuelTypes},
+      {id:'liters', label:'จำนวนลิตร', type:'num'},
+      {id:'baht', label:'จำนวนเงิน (บาท)', type:'num'},
+      {id:'station', label:'เติมที่ไหน (ปั๊ม/สาขา)', type:'place'},
+      {id:'km', label:'เลขไมล์ตอนเติม (กม.)', type:'num'},
+      {id:'pay', label:'ชำระด้วย', type:'choice', opts:PAY}],
+    exp: [
+      {id:'car', label:'รถ', type:'choice', opts:S.cars, def:L.car},
+      {id:'kind', label:'ประเภท', type:'choice', opts:S.expKinds},
+      {id:'baht', label:'จำนวนเงิน (บาท)', type:'num'},
+      {id:'place', label:'ด่าน / ร้าน / สถานที่', type:'place'}]
+  };
+  return F[view];
 }
 
 function field(f) {
-  const id = 'f_' + f.id;
-  const opt = a => a.map(x => `<option>${esc(x)}</option>`).join('');
+  const id = 'f_' + f.id, def = f.def || '';
   let el;
-  if (f.type === 'cars')           el = `<select id="${id}">${opt(S.cars)}</select>`;
-  else if (f.type === 'purposes')  el = `<select id="${id}">${opt(S.purposes)}</select>`;
-  else if (f.type === 'depts')     el = `<select id="${id}">${opt(S.depts)}</select>`;
-  else if (f.type === 'fuelTypes') el = `<select id="${id}">${opt(S.fuelTypes)}</select>`;
-  else if (f.type === 'pay')       el = `<select id="${id}">${opt(PAY)}</select>`;
-  else if (f.type === 'kind')      el = `<select id="${id}">${opt(S.expKinds)}</select>`;
-  else if (f.type === 'num')       el = `<input id="${id}" type="text" inputmode="decimal">`;
-  else if (f.type === 'place')     el = `<input id="${id}" list="places" autocomplete="off">`;
-  else                             el = `<input id="${id}" autocomplete="off">`;
+  if (f.type === 'choice') {
+    const o = f.opts, v = o.indexOf(def) >= 0 ? def : o[0];
+    el = o.length <= 6
+      ? `<input type="hidden" id="${id}" value="${esc(v)}"><div class="chips" data-for="${id}">${o.map(x => `<button type="button" class="chip${x === v ? ' on' : ''}">${esc(x)}</button>`).join('')}</div>`
+      : `<select id="${id}">${o.map(x => `<option${x === v ? ' selected' : ''}>${esc(x)}</option>`).join('')}</select>`;
+  } else if (f.type === 'num') el = `<input id="${id}" type="text" inputmode="decimal" autocomplete="off">`;
+  else if (f.type === 'place') {
+    const ps = (S.last && S.last.places || []).slice(0, 6);
+    el = `<input id="${id}" autocomplete="off" value="${esc(def)}">` + (ps.length ? `<div class="chips" data-fill="${id}">${ps.map(p => `<button type="button" class="chip">${esc(p)}</button>`).join('')}</div>` : '');
+  } else el = `<input id="${id}" autocomplete="off" value="${esc(def)}">`;
   return `<label for="${id}">${f.label}</label>${el}`;
 }
 
 function renderForm() {
-  const form = FORMS[mode];
   let top = '';
-  if (mode === 'end') {
-    if (!S.openTrip) { $('view').innerHTML = '<div class="note">ยังไม่มีทริปที่เปิดอยู่ กด "ออกรถ" ก่อน</div>'; return; }
+  if (view === 'end') {
     const t = S.openTrip;
-    top = `<div class="note">ทริปที่เปิดอยู่: ${esc(t.car)} ออก ${esc(t.time)} จาก ${esc(t.from)}<br>ไมล์ออก ${esc(t.startKm)} · ผู้ใช้รถ ${esc(t.user)} · ${esc(t.detail)}</div>`;
+    top = `<div class="trip" style="margin-bottom:14px"><div class="lbl">${esc(t.car)} · ออก ${esc(t.time)} จาก ${esc(t.from)}</div><div class="odo">${odo(t.startKm)}</div><div class="meta">${esc(t.user)}${t.detail ? ' · ' + esc(t.detail) : ''}</div></div>`;
   }
-  if (mode === 'start' && S.openTrip) {
-    $('view').innerHTML = '<div class="note">มีทริปที่ยังไม่จบ กรุณากด "ถึงที่หมาย" ก่อน</div>';
-    return;
-  }
-  $('view').innerHTML = top + form.fields.map(field).join('') + '<button class="go" id="send">บันทึก</button><div class="msg" id="msg"></div>';
-
-  // เติมไมล์ล่าสุดของรถให้อัตโนมัติ (คนขับแค่ยืนยันหรือแก้)
-  const car = $('f_car'), km = $('f_startKm') || $('f_km');
-  if (car && km) {
-    const fill = () => { const v = S.lastKm[car.value]; km.value = v !== undefined ? v : ''; };
-    car.onchange = fill; fill();
-  }
+  $('view').innerHTML = `${top}<div class="card"><h2>${TITLE[view]}</h2>${fields().map(field).join('')}<div class="hint" id="hint"></div></div>
+    <div class="savebar"><button class="go" id="send">บันทึก</button></div><div class="msg" id="msg"></div>`;
+  fillKm(); check();
   $('send').onclick = () => submitBtn($('send'), async () => {
     const data = { reqId };
-    form.fields.forEach(f => data[f.id] = $('f_' + f.id).value);
-    const r = await api(form.action, data);
-    reqId = newId();                       // สำเร็จแล้ว รอบหน้าใช้รหัสใหม่
-    if (r.state === 'ok' && Array.isArray(r.cars)) S = r;          // เซิร์ฟเวอร์ส่งสถานะล่าสุดมาแล้ว ไม่ต้องโหลดซ้ำ
+    fields().forEach(f => data[f.id] = $('f_' + f.id).value);
+    const r = await api(ACTION[view], data);
+    reqId = newId();
+    if (r.state === 'ok' && Array.isArray(r.cars)) S = r;
     else { try { S = await api('init', {}); } catch (e) { /* บันทึกสำเร็จแล้ว โหลดใหม่ไม่ได้ก็ใช้สถานะเดิม */ } }
-    render();
-    $('view').insertAdjacentHTML('afterbegin', `<div class="note ok">✅ ${esc(r.msg)}</div>`);
+    toast = r.msg; undoInfo = r.undo ? Object.assign({at: Date.now()}, r.undo) : null;
+    view = 'home'; render(); scrollTo(0, 0);
   });
 }
 
-let busy = false;
+const val = id => { const e = $('f_' + id); return e ? e.value : ''; };
+const numv = id => parseFloat(String(val(id)).replace(/,/g, ''));
+function fillKm() {          // เติมไมล์ล่าสุดของรถที่เลือกให้ (คนขับแค่ยืนยันหรือแก้)
+  const k = $('f_startKm') || $('f_km');
+  if (k && $('f_car')) { const v = S.lastKm[val('car')]; k.value = v !== undefined ? v : ''; }
+}
+function check() {
+  const h = $('hint'), b = $('send'); if (!h) return;
+  let msg = '', cls = '', block = false;
+  if (view === 'end') {
+    const d = numv('endKm') - Number(S.openTrip.startKm);
+    if (!isNaN(d)) { if (d < 0) { msg = 'ไมล์ถึงต้องไม่น้อยกว่าไมล์ออก (' + S.openTrip.startKm + ')'; cls = 'bad'; block = true; } else msg = 'ระยะทาง ' + d + ' กม.'; if (d > 500) { msg += ' — ไกลผิดปกติ ตรวจเลขไมล์อีกครั้ง'; cls = 'warn'; } }
+  } else if (view === 'start' || view === 'fuel') {
+    const km = numv(view === 'start' ? 'startKm' : 'km'), last = S.lastKm[val('car')];
+    if (!isNaN(km) && last !== undefined && km < Number(last)) { msg = 'ไมล์ต่ำกว่าครั้งก่อน (' + last + ') ตรวจอีกครั้ง'; cls = 'warn'; }
+    if (view === 'fuel' && !msg) {
+      const l = numv('liters'), bt = numv('baht');
+      if (l > 0 && bt > 0) { const p = bt / l; msg = '≈ ' + p.toFixed(2) + ' บาท/ลิตร'; if (val('type') !== 'น้ำมันเครื่อง' && (p < 15 || p > 90)) { msg += ' — ราคาผิดปกติ ตรวจลิตรและบาท'; cls = 'warn'; } }
+    }
+  }
+  h.textContent = msg; h.className = 'hint ' + cls; if (b) b.disabled = block || busy;
+}
+
+document.addEventListener('click', e => {
+  const t = e.target.closest('button'); if (!t) return;
+  if (t.dataset.nav) return go(t.dataset.nav);
+  if (t.dataset.go) return go(t.dataset.go);
+  if (t.dataset.undo !== undefined && undoInfo) {
+    const u = undoInfo;
+    return submitBtn(t, async () => { const r = await api('undo', {what: u.what, id: u.id}); undoInfo = null; S = r; toast = r.msg; render(); });
+  }
+  if (t.classList.contains('chip')) {
+    const g = t.parentNode;
+    if (g.dataset.for) { g.querySelectorAll('.chip').forEach(c => c.classList.toggle('on', c === t)); $(g.dataset.for).value = t.textContent; if (g.dataset.for === 'f_car') fillKm(); }
+    else if (g.dataset.fill) $(g.dataset.fill).value = t.textContent;
+    check();
+  }
+});
+document.addEventListener('input', check);
+document.addEventListener('change', e => { if (e.target.id === 'f_car') fillKm(); check(); });
+
 async function submitBtn(btn, fn) {
   if (busy) return;
   busy = true; btn.disabled = true;
@@ -185,7 +258,7 @@ async function submitBtn(btn, fn) {
   finally { busy = false; }
 }
 
-function fail(e) { $('view').innerHTML = `<span class="bad">เปิดไม่สำเร็จ: ${esc(e.message || e)}</span>`; $('who').textContent = ''; }
+function fail(e) { $('view').innerHTML = `<div class="card bad">เปิดไม่สำเร็จ: ${esc(e.message || e)}</div>`; $('who').textContent = ''; }
 
 main();
 </script>
