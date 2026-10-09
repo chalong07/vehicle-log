@@ -60,7 +60,38 @@ let S = null, view = 'home', busy = false, toast = null, undoInfo = null;
 const $ = id => document.getElementById(id);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const newId = () => (self.crypto && crypto.randomUUID ? crypto.randomUUID().replace(/-/g, '') : Array.from({length: 24}, () => Math.floor(Math.random() * 36).toString(36)).join('')).slice(0, 20);
-let reqId = newId();   // รหัสของการกดบันทึกครั้งนี้ — ลองใหม่ด้วยรหัสเดิม เซิร์ฟเวอร์จะไม่เขียนซ้ำ
+let reqId = newId();
+
+// ===== แก้จุดพัง: อ่าน mode จาก liff.state ได้ =====
+function getModeFromUrl() {
+  const usp = new URLSearchParams(window.location.search);
+  let mode = usp.get('mode');
+  if (mode) return mode;
+  // LINE จะส่ง ?mode=xxx มาเป็น ?liff.state=%3Fmode%3Dxxx สำหรับคนอื่น
+  const liffState = usp.get('liff.state');
+  if (liffState) {
+    try {
+      // liff.state อาจเป็น "?mode=start" หรือ "mode=start" ที่ encode มา
+      const decoded = decodeURIComponent(liffState);
+      const usp2 = new URLSearchParams(decoded.startsWith('?') ? decoded : '?' + decoded);
+      mode = usp2.get('mode');
+      if (mode) return mode;
+      // เผื่อกรณีเป็น /?mode=start ตรงๆ
+      const usp3 = new URLSearchParams(liffState);
+      mode = usp3.get('mode');
+      if (mode) return mode;
+    } catch (e) {}
+  }
+  // เผื่อกรณี LIFF ส่งมาใน hash
+  if (window.location.hash) {
+    try {
+      const hashParams = new URLSearchParams(window.location.hash.substring(1));
+      mode = hashParams.get('mode');
+      if (mode) return mode;
+    } catch (e) {}
+  }
+  return null;
+}
 
 async function api(action, data) {
   const ctl = new AbortController(), timer = setTimeout(() => ctl.abort(), 60000);
@@ -80,7 +111,7 @@ async function main() {
     await liff.init({ liffId: CFG.LIFF_ID });
     if (!liff.isLoggedIn()) { liff.login(); return; }
     S = await api('init', {});
-    const m = new URLSearchParams(location.search).get('mode');   // เมนู LINE: ?mode=start|end|fuel|exp|trip
+    const m = getModeFromUrl();   // แก้แล้ว: รองรับ ?mode= และ ?liff.state=%3Fmode%3D
     if (m === 'fuel' || m === 'exp') view = m;
     else if (m === 'start' || m === 'end' || m === 'trip') view = S.openTrip ? 'end' : 'start';
     else if (S.openTrip) view = 'home';
@@ -138,7 +169,6 @@ function renderHome() {
   $('view').innerHTML = h;
 }
 
-/* ===== ฟอร์ม: จำค่าที่ใช้ล่าสุด · ปุ่มเลือก · ตรวจทันที ===== */
 function fields() {
   const L = S.last || {};
   const F = {
@@ -202,7 +232,7 @@ function renderForm() {
     const r = await api(ACTION[view], data);
     reqId = newId();
     if (r.state === 'ok' && Array.isArray(r.cars)) S = r;
-    else { try { S = await api('init', {}); } catch (e) { /* บันทึกสำเร็จแล้ว โหลดใหม่ไม่ได้ก็ใช้สถานะเดิม */ } }
+    else { try { S = await api('init', {}); } catch (e) { } }
     toast = r.msg; undoInfo = r.undo ? Object.assign({at: Date.now()}, r.undo) : null;
     view = 'home'; render(); scrollTo(0, 0);
   });
@@ -210,7 +240,7 @@ function renderForm() {
 
 const val = id => { const e = $('f_' + id); return e ? e.value : ''; };
 const numv = id => parseFloat(String(val(id)).replace(/,/g, ''));
-function fillKm() {          // เติมไมล์ล่าสุดของรถที่เลือกให้ (คนขับแค่ยืนยันหรือแก้)
+function fillKm() {
   const k = $('f_startKm') || $('f_km');
   if (k && $('f_car')) { const v = S.lastKm[val('car')]; k.value = v !== undefined ? v : ''; }
 }
@@ -258,9 +288,10 @@ async function submitBtn(btn, fn) {
   finally { busy = false; }
 }
 
-function fail(e) { $('view').innerHTML = `<div class="card bad">เปิดไม่สำเร็จ: ${esc(e.message || e)}</div>`; $('who').textContent = ''; }
+function fail(e) { $('view').innerHTML = `<div class="card bad">เปิดไม่สำเร็จ: ${esc(e.message || e)}<br><br>ลองปิดแล้วเปิดใหม่จาก Rich Menu</div>`; $('who').textContent = ''; }
 
 main();
 </script>
 </body>
 </html>
+
